@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Meus Assistentes - Três Bots (Demo)</title>
+<style>
+  body { 
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 20px; 
+    margin: 0;
+    min-height: 100vh;
+  }
+  .container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 20px;
+    text-align: center;
+  }
+  .header h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+  .cors-warning {
+    background: #ffe6e6;
+    border-left: 4px solid #ff4444;
+    padding: 15px;
+    margin: 10px;
+    border-radius: 5px;
+  }
+  .cors-warning h3 {
+    margin: 0 0 10px 0;
+    color: #cc0000;
+  }
+  .demo-note {
+    background: #e6f3ff;
+    border-left: 4px solid #0066cc;
+    padding: 15px;
+    margin: 10px;
+    border-radius: 5px;
+  }
+  #chat { 
+    padding: 20px; 
+    background: #fff; 
+    height: 400px; 
+    overflow-y: auto; 
+    border-bottom: 1px solid #eee;
+  }
+  .msg-user { 
+    color: #2c3e50; 
+    margin: 10px 0; 
+    font-weight: bold;
+    background: #ecf0f1;
+    padding: 10px;
+    border-radius: 10px;
+    border-left: 4px solid #3498db;
+  }
+  .msg-bot { 
+    margin: 10px 0; 
+    padding: 10px;
+    border-radius: 10px;
+    border-left: 4px solid #95a5a6;
+  }
+  .msg-gpt { 
+    color: #27ae60; 
+    background: #e8f5e8;
+    border-left-color: #27ae60;
+  }
+  .msg-devstral { 
+    color: #8e44ad; 
+    background: #f4ecf7;
+    border-left-color: #8e44ad;
+  }
+  .msg-claude { 
+    color: #e67e22; 
+    background: #fdf2e9;
+    border-left-color: #e67e22;
+  }
+  .input-container {
+    padding: 20px;
+    background: #f8f9fa;
+    display: flex;
+    gap: 10px;
+  }
+  #userInput {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 25px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  #userInput:focus {
+    border-color: #4facfe;
+  }
+  button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: transform 0.2s;
+  }
+  button:hover {
+    transform: translateY(-2px);
+  }
+  .thinking {
+    opacity: 0.6;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h2>🤖 Meus Assistentes: GPT-4o, Devstral e Claude</h2>
+  </div>
+  
+  <div class="cors-warning">
+    <h3>⚠️ Problema CORS Detectado</h3>
+    <p>As APIs externas não funcionam diretamente no browser por questões de segurança (CORS). Para usar APIs reais:</p>
+    <ul>
+      <li>Execute através de um servidor local (python -m http.server)</li>
+      <li>Use uma extensão CORS no browser</li>
+      <li>Implemente um backend próprio</li>
+    </ul>
+  </div>
+  
+  <div class="demo-note">
+    <h3>🎯 Modo Demonstração</h3>
+    <p>Esta versão simula as respostas dos assistentes para demonstrar a funcionalidade da interface.</p>
+  </div>
+  
+  <div id="chat"></div>
+  
+  <div class="input-container">
+    <input id="userInput" type="text" placeholder="Digite sua mensagem..." />
+    <button onclick="sendMessage()">Enviar</button>
+  </div>
+</div>
+
+<script>
+// Respostas simuladas para demonstração
+const simulatedResponses = {
+  "gpt": [
+    "Olá! Sou o GPT-4o. Como posso ajudá-lo hoje?",
+    "Interessante pergunta! Vou pensar sobre isso...",
+    "Baseado no meu treinamento, posso sugerir...",
+    "Essa é uma questão complexa que envolve vários fatores...",
+    "Ótima pergunta! Deixe-me explicar de forma clara..."
+  ],
+  "devstral": [
+    "Saudações! Devstral aqui, especialista em desenvolvimento.",
+    "Do ponto de vista técnico, isso pode ser abordado de várias formas...",
+    "Como um modelo focado em programação, recomendo...",
+    "Essa implementação pode ser otimizada usando...",
+    "Vou analisar isso do ponto de vista de desenvolvimento..."
+  ],
+  "claude": [
+    "Olá! Claude da Anthropic aqui. Prazer em ajudar!",
+    "Essa é uma questão fascinante que merece uma análise cuidadosa...",
+    "Posso oferecer algumas perspectivas sobre isso...",
+    "É importante considerar os aspectos éticos desta questão...",
+    "Vou tentar dar uma resposta equilibrada e útil..."
+  ]
+};
+
+let responseIndex = 0;
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const message = input.value.trim();
+  if (!message) return;
+  
+  addMessage('Você', message, 'msg-user');
+  input.value = '';
+  
+  // Modelos que vamos simular
+  const models = [
+    { name: "GPT-4o", type: "gpt", className: "msg-gpt" },
+    { name: "Devstral", type: "devstral", className: "msg-devstral" },
+    { name: "Claude", type: "claude", className: "msg-claude" }
+  ];
+  
+  // Mostrar indicador de carregamento
+  models.forEach(model => {
+    addMessage(model.name, "🤔 Pensando...", model.className + " thinking");
+  });
+  
+  // Simular delay de resposta
+  setTimeout(() => {
+    models.forEach((model, index) => {
+      // Remover mensagem de carregamento
+      removeLastMessage(model.className);
+      
+      // Adicionar resposta simulada
+      let response;
+      if (message.toLowerCase().includes('olá') || message.toLowerCase().includes('ola')) {
+        response = simulatedResponses[model.type][0];
+      } else {
+        const responses = simulatedResponses[model.type];
+        response = responses[Math.floor(Math.random() * responses.length)];
+      }
+      
+      setTimeout(() => {
+        addMessage(model.name, response, model.className);
+      }, index * 500); // Escalonar as respostas
+    });
+  }, 1000);
+}
+
+function removeLastMessage(className) {
+  const chat = document.getElementById('chat');
+  const messages = chat.querySelectorAll('.' + className.split(' ')[0]);
+  if (messages.length > 0) {
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage.textContent.includes('Pensando...')) {
+      lastMessage.remove();
+    }
+  }
+}
+
+function addMessage(sender, text, className = 'msg-bot') {
+  const chat = document.getElementById('chat');
+  const div = document.createElement('div');
+  div.className = className;
+  div.innerHTML = `<strong>${sender}:</strong> ${text}`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// Permitir envio com Enter
+document.getElementById('userInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') {
+    sendMessage();
+  }
+});
+
+// Mensagem de boas-vindas
+window.onload = function() {
+  addMessage('Sistema', '👋 Interface carregada! Esta é uma demonstração com respostas simuladas.', 'msg-bot');
+}
+</script>
+</body>
+</html>
